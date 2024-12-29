@@ -597,21 +597,14 @@ function hmrAccept(bundle /*: ParcelRequire */ , id /*: string */ ) {
 
 },{}],"aenu9":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-var _webImmediateJs = require("core-js/modules/web.immediate.js"); // window.addEventListener('hashchange', showRecipe);
- // window.addEventListener('load', showRecipe);
-var _modalJs = require("./modal.js");
+var _webImmediateJs = require("core-js/modules/web.immediate.js"); // window.addEventListener('hashchange', controlRecipes);
+ // window.addEventListener('load', controlRecipes);
+var _modelJs = require("./model.js");
 var _recipeViewJs = require("./views/recipeView.js");
 var _recipeViewJsDefault = parcelHelpers.interopDefault(_recipeViewJs);
 var _runtime = require("regenerator-runtime/runtime");
 // console.log(icons);
 const recipeContainer = document.querySelector('.recipe');
-const timeout = function(s) {
-    return new Promise(function(_, reject) {
-        setTimeout(function() {
-            reject(new Error(`Request took too long! Timeout after ${s} second`));
-        }, s * 1000);
-    });
-};
 // https://forkify-api.jonas.io
 ///////////////////////////////////////
 // console.log('test');
@@ -625,27 +618,28 @@ const timeout = function(s) {
 //   parentEl.innerHTML = '';
 //   parentEl.insertAdjacentHTML('afterbegin', markup);
 // };
-const showRecipe = async function() {
+const controlRecipes = async function() {
     try {
         const id = window.location.hash.slice(1);
         // console.log(id);
         if (!id) return;
         // renderSpinner(recipeContainer);
         (0, _recipeViewJsDefault.default).renderSpinner();
-        await _modalJs.loadRecipe(id);
+        await _modelJs.loadRecipe(id);
         // const { recipe } = modal.state;
-        (0, _recipeViewJsDefault.default).render(_modalJs.state.recipe);
+        (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
     } catch (err) {
-        alert(err);
+        console.log(err);
+        (0, _recipeViewJsDefault.default).renderError();
     }
 };
-// showRecipe();
-[
-    'hashchange',
-    'load'
-].forEach((ev)=>window.addEventListener(ev, showRecipe));
+// controlRecipes();
+const init = function() {
+    (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipes);
+};
+init();
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","core-js/modules/web.immediate.js":"49tUX","regenerator-runtime/runtime":"dXNgZ","./views/recipeView.js":"l60JC","./modal.js":"aHHgN"}],"gkKU3":[function(require,module,exports,__globalThis) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","core-js/modules/web.immediate.js":"49tUX","regenerator-runtime/runtime":"dXNgZ","./views/recipeView.js":"l60JC","./model.js":"Y4A21"}],"gkKU3":[function(require,module,exports,__globalThis) {
 exports.interopDefault = function(a) {
     return a && a.__esModule ? a : {
         default: a
@@ -2514,31 +2508,63 @@ try {
 },{}],"l60JC":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
+var _fractional = require("fractional");
 var _iconsSvg = require("../../img/icons.svg");
 var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
-var _fractional = require("fractional");
 class RecipeView {
     #parentElement = document.querySelector('.recipe');
     #data;
+    #errorMessage = `We could not find the recipe. Please try another one!`;
+    #message = '';
     render(data) {
         this.#data = data;
         const markUp = this.#generateMarkup();
-        this.#clear;
+        this.#clear();
         this.#parentElement?.insertAdjacentHTML('afterbegin', markUp);
     }
     #clear() {
         this.#parentElement.innerHTML = '';
     }
-    renderSpinner = function() {
+    renderSpinner() {
         const markup = `
             <div class="spinner">
                 <svg>
                 <use href="${(0, _iconsSvgDefault.default)}#icon-loader"></use>
               </svg>
             </div>`;
-        this.#parentElement.innerHTML = '';
+        this.#clear();
         this.#parentElement.insertAdjacentHTML('afterbegin', markup);
-    };
+    }
+    renderError(message = this.#errorMessage) {
+        const markup = `<div class="error">
+            <div>
+              <svg>
+                <use href="${(0, _iconsSvgDefault.default)}#icon-alert-triangle"></use>
+              </svg>
+            </div>
+            <p>${message}</p>
+          </div>`;
+        this.#clear();
+        this.#parentElement.insertAdjacentHTML('afterbegin', markup);
+    }
+    renderMessage(message = this.#message) {
+        const markup = `<div class="message">
+            <div>
+              <svg>
+                <use href="${(0, _iconsSvgDefault.default)}#icon-smile"></use>
+              </svg>
+            </div>
+            <p>${message}</p>
+          </div>`;
+        this.#clear();
+        this.#parentElement.insertAdjacentHTML('afterbegin', markup);
+    }
+    addHandlerRender(handler) {
+        [
+            'hashchange',
+            'load'
+        ].forEach((ev)=>window.addEventListener(ev, handler));
+    }
     #generateMarkup() {
         return `
         <figure class="recipe__fig">
@@ -2922,23 +2948,25 @@ Fraction.primeFactors = function(n) {
 };
 module.exports.Fraction = Fraction;
 
-},{}],"aHHgN":[function(require,module,exports,__globalThis) {
+},{}],"Y4A21":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "state", ()=>state);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 var _regeneratorRuntime = require("regenerator-runtime");
+var _configJs = require("./config.js");
+var _helperJs = require("./helper.js");
 const state = {
     recipe: {}
 };
 const loadRecipe = async function(id) {
     try {
-        const res = await fetch(`https://forkify-api.jonas.io/api/v2/recipes/${id}`);
+        const data = await (0, _helperJs.getJSON)(`${(0, _configJs.API_URL)}/${id}`);
         // 'https://forkify-api.jonas.io/api/v2/recipes/664c8f193e7aa067e94e8297'
         // console.log(res);
-        const data = await res.json();
+        // const data = await res.json();
         // console.log(res, data);
-        if (!res.ok) throw new Error(`${data.message} (${res.status})`);
+        // if (!res.ok) throw new Error(`${data.message} (${res.status})`);
         const { recipe } = data.data;
         state.recipe = {
             cookingTime: recipe.cooking_time,
@@ -2952,10 +2980,46 @@ const loadRecipe = async function(id) {
         };
     // console.log(state.recipe);
     } catch (err) {
-        alert(err);
+        // console.error(`${err} ✋`);
+        throw err;
     }
 };
 
-},{"regenerator-runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["ik2hV","aenu9"], "aenu9", "parcelRequire94c2")
+},{"regenerator-runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./config.js":"k5Hzs","./helper.js":"lVRAz"}],"k5Hzs":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "API_URL", ()=>API_URL);
+parcelHelpers.export(exports, "TIMEOUT_SEC", ()=>TIMEOUT_SEC);
+const API_URL = `https://forkify-api.jonas.io/api/v2/recipes/`;
+const TIMEOUT_SEC = 10;
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"lVRAz":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "getJSON", ()=>getJSON);
+var _config = require("./config");
+const timeout = function(s) {
+    return new Promise(function(_, reject) {
+        setTimeout(function() {
+            reject(new Error(`Request took too long! Timeout after ${s} second`));
+        }, s * 1000);
+    });
+};
+const getJSON = async function(url) {
+    try {
+        const fetchPro = fetch(url);
+        const res = await Promise.race([
+            fetchPro,
+            timeout((0, _config.TIMEOUT_SEC))
+        ]);
+        const data = await res.json();
+        if (!res.ok) throw new Error(`${data.message} (${res.status})`);
+        return data;
+    } catch (err) {
+        throw err;
+    }
+};
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./config":"k5Hzs"}]},["ik2hV","aenu9"], "aenu9", "parcelRequire94c2")
 
 //# sourceMappingURL=index.e37f48ea.js.map

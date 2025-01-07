@@ -3,9 +3,9 @@ import recipeView from './views/recipeView.js';
 // import icons from '../img/icons.svg';
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
-import searchView from './views/searchView.js';
-import resultsView from './views/resultsView.js';
 import paginationView from './views/paginationView.js';
+import resultsView from './views/resultsView.js';
+import searchView from './views/searchView.js';
 
 // if (module.hot) {
 //   module.hot.accept();
@@ -42,6 +42,8 @@ const controlRecipes = async function () {
     // const { recipe } = modal.state;
 
     recipeView.render(model.state.recipe);
+    //Test
+    // controlServings();
   } catch (err) {
     console.log(err);
     recipeView.renderError();
@@ -75,9 +77,18 @@ const controlPagination = function (goToPage) {
   // Render new pagination button
   paginationView.render(model.state.search);
 };
+
+const controlServings = function (newServings) {
+  // Update the recipe servings (in state)
+  model.updateServings(newServings);
+  // Update the recipe view
+  recipeView.render(model.state.recipe);
+};
+
 // controlRecipes();
 const init = function () {
   recipeView.addHandlerRender(controlRecipes);
+  recipeView.addHandlerUpdateServings(controlServings);
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerClick(controlPagination);
 };

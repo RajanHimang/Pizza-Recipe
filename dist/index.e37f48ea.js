@@ -632,13 +632,13 @@ const controlRecipes = async function() {
         const id = window.location.hash.slice(1);
         // console.log(id);
         if (!id) return;
-        // renderSpinner(recipeContainer);
         (0, _recipeViewJsDefault.default).renderSpinner();
+        // 0)Update results view to mark selected search result
+        (0, _resultsViewJsDefault.default).update(_modelJs.getSearchResultsPage());
+        // 1) Loading recipe
         await _modelJs.loadRecipe(id);
-        // const { recipe } = modal.state;
+        // Rendering recipe
         (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
-    //Test
-    // controlServings();
     } catch (err) {
         console.log(err);
         (0, _recipeViewJsDefault.default).renderError();
@@ -653,7 +653,7 @@ const controlSearchResults = async function() {
         await _modelJs.loadSearchResults(query);
         // console.log(model.state.search.results);
         // resultsView.render(model.state.search.results);
-        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchResultsPage(3));
+        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchResultsPage());
         // Render initial pagination button
         (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
     } catch (err) {
@@ -671,7 +671,7 @@ const controlServings = function(newServings) {
     // Update the recipe servings (in state)
     _modelJs.updateServings(newServings);
     // Update the recipe view
-    (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
+    (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
 };
 // controlRecipes();
 const init = function() {
@@ -2570,9 +2570,9 @@ class RecipeView extends (0, _viewJsDefault.default) {
         this._parentElement?.addEventListener('click', function(e) {
             const btn = e.target.closest('.btn--update-servings');
             if (!btn) return;
-            console.log(btn);
+            // console.log(btn);
             const { updateTo } = btn.dataset;
-            console.log(updateTo);
+            // console.log(updateTo);
             if (+updateTo > 0) handler(+updateTo);
         });
     }
@@ -2965,12 +2965,28 @@ var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 class View {
     _data;
     render(data) {
-        this._data = data;
         if (!data || Array.isArray(data) && data.length === 0) return this.renderError();
-        // console.log(data);
+        this._data = data;
         const markUp = this._generateMarkup();
         this._clear();
         this._parentElement?.insertAdjacentHTML('afterbegin', markUp);
+    }
+    update(data) {
+        this._data = data;
+        const newMarkUp = this._generateMarkup();
+        const newDOM = document.createRange().createContextualFragment(newMarkUp);
+        const newElements = Array.from(newDOM.querySelectorAll('*'));
+        const curElements = Array.from(this._parentElement.querySelectorAll('*'));
+        // console.log(curElements);
+        // console.log(newElements);
+        newElements.forEach((newEl, i)=>{
+            const curEl = curElements[i];
+            console.log(curEl, newEl.isEqualNode(curEl));
+            //Update changed text
+            if (!newEl.isEqualNode(curEl) && newEl.firstChild?.nodeValue?.trim() !== '') curEl.textContent = newEl.textContent;
+            //Update changed attributes
+            if (!newEl.isEqualNode(curEl)) Array.from(newEl.attributes).forEach((attr)=>curEl.setAttribute(attr.name, attr.value));
+        });
     }
     _clear() {
         this._parentElement.innerHTML = '';
@@ -3020,6 +3036,7 @@ parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
 parcelHelpers.export(exports, "getSearchResultsPage", ()=>getSearchResultsPage);
 parcelHelpers.export(exports, "updateServings", ()=>updateServings);
+parcelHelpers.export(exports, "addBookMark", ()=>addBookMark);
 var _configJs = require("./config.js");
 var _helperJs = require("./helper.js");
 const state = {
@@ -3034,11 +3051,6 @@ const state = {
 const loadRecipe = async function(id) {
     try {
         const data = await (0, _helperJs.getJSON)(`${(0, _configJs.API_URL)}${id}`);
-        // 'https://forkify-api.jonas.io/api/v2/recipes/664c8f193e7aa067e94e8297'
-        // console.log(res);
-        // const data = await res.json();
-        // console.log(res, data);
-        // if (!res.ok) throw new Error(`${data.message} (${res.status})`);
         const { recipe } = data.data;
         state.recipe = {
             cookingTime: recipe.cooking_time,
@@ -3069,6 +3081,7 @@ const loadSearchResults = async function(query) {
                 title: rec.title
             };
         });
+        state.search.page = 1;
     // console.log(state.search.results);
     } catch (err) {
         throw err;
@@ -3086,6 +3099,7 @@ const updateServings = function(newServings) {
     });
     state.recipe.servings = newServings;
 };
+const addBookMark = function() {};
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./config.js":"k5Hzs","./helper.js":"lVRAz"}],"k5Hzs":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
@@ -3163,9 +3177,10 @@ class ResultsView extends (0, _viewJsDefault.default) {
         return this._data.map(this._generateMarkupPreview).join('');
     }
     _generateMarkupPreview(result) {
+        const id = window.location.hash.slice(1);
         return `
             <li class="preview">
-                    <a class="preview__link preview__link--active" href="#${result.id}">
+                    <a class="preview__link ${result.id === id ? 'preview__link--active' : ''}" href="#${result.id}">
                     <figure class="preview__fig">
                         <img src="${result.image}" alt="Test" />
                     </figure>
